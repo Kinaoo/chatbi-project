@@ -1,0 +1,32 @@
+表名：orders
+字段列表（字段名与数据库完全一致）：
+字段列表：
+- row_id (INTEGER) 行号
+- order_id (TEXT) 订单号
+- order_date (TIMESTAMP) 订单日期
+- ship_date (TIMESTAMP) 发货日期
+- ship_mode (TEXT) 配送方式
+- customer_id (TEXT) 客户ID
+- customer_name (TEXT) 客户姓名
+- segment (TEXT) 客户细分
+- "country/region" (TEXT) 国家/地区（注意：字段名包含斜杠，SQL中必须使用双引号，如 SELECT "country/region" FROM orders）
+- city (TEXT) 城市
+- state (TEXT) 州/省
+- postal_code (REAL) 邮政编码
+- region (TEXT) 地区，取值：'Central', 'East', 'South', 'West'
+- product_id (TEXT) 产品ID
+- category (TEXT) 产品类别，取值：'Furniture', 'Office Supplies', 'Technology'
+- "sub-category" (TEXT) 子类别（注意：字段名包含连字符，SQL中必须使用双引号，如 SELECT "sub-category" FROM orders）
+- product_name (TEXT) 产品名称
+- sales (REAL) 销售额
+- quantity (INTEGER) 数量
+- discount (REAL) 折扣率
+- profit (REAL) 利润
+
+业务说明：
+- 销售额即 sales，利润即 profit。
+- 毛利率 = profit / sales。若用户问“毛利率”，请计算 profit / sales 并命名为 gross_margin。
+- 地区（region）是固定的四个取值：Central, East, South, West。
+- 用户问“上个月”时，请基于当前日期（2026年3月）的上一个月（即2026年2月）进行筛选。
+- 所有时间比较请使用 order_date 字段。
+- 对于字段名包含特殊字符（如 "country/region"），在 SQL 中必须使用双引号包裹，例如：SELECT "country/region" FROM orders。

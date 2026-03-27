@@ -1,2 +1,22 @@
 *.pyc _pycache_/ .env
+# Python 虚拟环境
+chatbi_env/
 venv/
+
+# 敏感信息
+.env
+
+# 数据库文件（太大且可能包含敏感数据，不上传）
+*.db
+*.sqlite
+
+# 日志文件
+*.log
+
+# 缓存和临时文件
+__pycache__/
+*.pyc
+.DS_Store
+
+# 图表输出（可选）
+*.png
