@@ -3,6 +3,8 @@ import sqlite3
 import logging
 from dotenv import load_dotenv
 from openai import OpenAI
+import matplotlib.pyplot as plt
+import seaborn as sns
 
 # 配置日志
 logging.basicConfig(
@@ -32,18 +34,87 @@ with open('prompt_template.txt', 'r', encoding='utf-8') as f:
 SYSTEM_PROMPT = PROMPT_TEMPLATE.format(schema=SCHEMA)
 CACHE = {}
 
+def auto_plot(df, question, output_dir='charts', filename=None):
+    """
+    根据 DataFrame 和用户问题自动生成图表并保存。
+    """
+    # 1. 检查数据有效性
+    if df is None or df.empty:
+        return None
+
+    # 2. 判断是否需要生成图表（关键词匹配）
+    chart_keywords = ['画图', '图表', '可视化', '趋势', '对比', '柱状图', '折线图', '饼图']
+    if not any(kw in question for kw in chart_keywords):
+        return None
+
+    # 3. 创建保存目录
+    os.makedirs(output_dir, exist_ok=True)
+
+    # 4. 生成唯一文件名
+    if filename is None:
+        import time
+        filename = f"chart_{int(time.time())}.png"
+    save_path = os.path.join(output_dir, filename)
+
+    # ========== 优先处理饼图（用户明确要求） ==========
+    if '饼图' in question:
+        # 情况1：数据有两列，且第二列为数值 → 直接用第一列作标签，第二列作数值
+        if df.shape[1] == 2 and df.dtypes.iloc[1] in ['int64', 'float64']:
+            plt.figure(figsize=(8, 8))
+            plt.pie(df.iloc[:, 1], labels=df.iloc[:, 0], autopct='%1.1f%%')
+            plt.title(question[:50])
+            plt.tight_layout()
+            plt.savefig(save_path)
+            plt.close()
+            return save_path
+        # 情况2：数据包含百分比列（列名含"percent"或"比例"）
+        percent_col = None
+        for col in df.columns:
+            if 'percent' in col.lower() or '比例' in col:
+                percent_col = col
+                break
+        if percent_col:
+            # 取第一列作为标签
+            label_col = df.columns[0]
+            plt.figure(figsize=(8, 8))
+            plt.pie(df[percent_col], labels=df[label_col], autopct='%1.1f%%')
+            plt.title(question[:50])
+            plt.tight_layout()
+            plt.savefig(save_path)
+            plt.close()
+            return save_path
+        # 其他情况无法绘制饼图，继续尝试其他图表
+
+    # ========== 柱状图 ==========
+    if df.shape[1] == 2 and df.dtypes.iloc[1] in ['int64', 'float64']:
+        plt.figure(figsize=(10, 6))
+        sns.barplot(x=df.columns[0], y=df.columns[1], data=df)
+        plt.xticks(rotation=45)
+        plt.tight_layout()
+        plt.savefig(save_path)
+        plt.close()
+        return save_path
+
+    # ========== 折线图（含日期列） ==========
+    date_cols = df.select_dtypes(include=['datetime64']).columns
+    if len(date_cols) > 0:
+        plt.figure(figsize=(12, 6))
+        for col in df.columns:
+            if col != date_cols[0] and df[col].dtype in ['int64', 'float64']:
+                plt.plot(df[date_cols[0]], df[col], marker='o', label=col)
+        plt.legend()
+        plt.xticks(rotation=45)
+        plt.tight_layout()
+        plt.savefig(save_path)
+        plt.close()
+        return save_path
+
+    # 未匹配任何规则，不生成图表
+    return None
+
 def ask_question(question, visualize=False):
     """
     输入自然语言问题，返回查询结果字典。
-    参数：
-        question: 字符串，用户问题
-        visualize: 布尔值，是否生成图表（Day 5 实现）
-    返回：
-        dict 包含以下字段：
-            - sql: 生成的 SQL 语句
-            - data: 查询结果的 DataFrame（或 None）
-            - error: 错误信息（若无错误则为 None）
-            - chart_path: 图表路径（预留）
     """
     result = {
         'sql': None,
@@ -55,9 +126,8 @@ def ask_question(question, visualize=False):
     if question in CACHE:
         logger.info(f"使用缓存结果: {question}")
         return CACHE[question]
-    
+
     try:
-        # 调用 LLM 生成 SQL
         logger.info(f"处理问题: {question}")
         response = client.chat.completions.create(
             model="glm-4-flash",
@@ -68,7 +138,6 @@ def ask_question(question, visualize=False):
             temperature=0
         )
         raw = response.choices[0].message.content.strip()
-        # 移除可能的 Markdown 代码块
         if raw.startswith("```sql") and raw.endswith("```"):
             sql = raw[6:-3].strip()
         elif raw.startswith("```") and raw.endswith("```"):
@@ -78,24 +147,24 @@ def ask_question(question, visualize=False):
         result['sql'] = sql
         logger.info(f"生成的SQL: {sql}")
 
-        # 执行 SQL
         conn = sqlite3.connect('superstore.db')
-        # 使用 pandas 读取结果，方便后续可视化
         import pandas as pd
         df = pd.read_sql_query(sql, conn)
         conn.close()
         result['data'] = df
         logger.info(f"查询成功，返回 {len(df)} 行")
 
+        if visualize:
+            chart_path = auto_plot(df, question)
+            result['chart_path'] = chart_path
+
     except Exception as e:
         result['error'] = str(e)
         logger.error(f"处理失败: {e}")
-    
-    # 存储到缓存
+
     CACHE[question] = result
     return result
 
-# 简单测试（可选）
 if __name__ == "__main__":
     test_q = "各个地区的总销售额是多少？"
     res = ask_question(test_q)
