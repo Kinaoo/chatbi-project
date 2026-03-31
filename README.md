@@ -1,4 +1,3 @@
-```markdown
 # ChatBI - 对话式数据分析平台
 
 [![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](http://159.75.111.169:8501)  
