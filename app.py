@@ -5,14 +5,21 @@ import pandas as pd
 
 # 页面配置
 st.set_page_config(page_title="ChatBI - 对话式数据分析", page_icon="📊", layout="wide")
-# 简单密码认证
+# 简单密码认证（避免初始加载时直接报错）
 if "authenticated" not in st.session_state:
+    st.session_state.authenticated = False
+
+if not st.session_state.authenticated:
     password = st.sidebar.text_input("请输入访问密码", type="password")
-    if password == st.secrets["ACCESS_PASSWORD"]:
-        st.session_state.authenticated = True
+    if password:
+        if password == st.secrets["ACCESS_PASSWORD"]:
+            st.session_state.authenticated = True
+            st.rerun()
+        else:
+            st.sidebar.error("密码错误")
     else:
-        st.sidebar.error("密码错误")
-        st.stop()
+        st.sidebar.info("请输入密码以访问")
+    st.stop()
 
 # 标题
 st.title("📊 ChatBI - 对话式数据分析平台")
