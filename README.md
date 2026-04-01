@@ -1,7 +1,8 @@
 # ChatBI - 对话式数据分析平台
-
+[![Python](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/)
 [![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](http://159.75.111.169:8501)  
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 
 ## 简介
 ChatBI 是一个基于大模型（智谱 GLM-4-Flash）的自然语言查询系统，能够将业务问题自动转换为 SQL，并返回数据表格和图表。支持多种图表类型（柱状图、折线图、饼图），并具备缓存、只读数据库、密码保护等生产级特性。
