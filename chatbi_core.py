@@ -165,6 +165,12 @@ def ask_question(question: str, visualize: bool = False) -> Dict[str, Any]:
         else:
             sql = raw.strip()
 
+        # 检查是否为有效 SQL（简单判断）
+        if not re.match(r'^\s*(SELECT|WITH|INSERT|UPDATE|DELETE)\s', sql, re.IGNORECASE):
+            result['error'] = "生成的内容不是有效的 SQL，请提出数据查询类问题。"
+            logger.warning(f"LLM 返回非 SQL: {sql[:100]}")
+            return result
+
         # 安全过滤：禁止危险SQL
         if any(keyword in sql.upper() for keyword in DANGER_SQL_KEYWORDS):
             raise ValueError("禁止执行修改/删除类SQL操作")
