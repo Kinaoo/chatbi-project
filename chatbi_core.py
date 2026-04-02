@@ -5,12 +5,11 @@ import time
 import logging
 import sqlite3
 from typing import Dict, Optional, Any
-
+from common.llm_client import LLMClient
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 from dotenv import load_dotenv
-from openai import OpenAI
 
 # 配置日志
 logging.basicConfig(
@@ -24,12 +23,6 @@ logger = logging.getLogger(__name__)
 # 加载环境变量
 load_dotenv()
 
-# 初始化客户端（使用智谱）
-client = OpenAI(
-    api_key=os.getenv("ZHIPU_API_KEY"),
-    base_url="https://open.bigmodel.cn/api/paas/v4/"
-)
-
 # 读取表结构和 Prompt 模板（在模块加载时读取一次）
 with open('schema_info.txt', 'r', encoding='utf-8') as f:
     SCHEMA = f.read()
@@ -38,6 +31,7 @@ with open('prompt_template.txt', 'r', encoding='utf-8') as f:
     PROMPT_TEMPLATE = f.read()
 
 SYSTEM_PROMPT = PROMPT_TEMPLATE.format(schema=SCHEMA)
+llm_client = LLMClient() # 初始化llm_client
 CACHE = {}
 CACHE_TTL = 3600  # 缓存有效期1小时
 MAX_TITLE_LENGTH = 50  # 图表标题最大长度
@@ -147,33 +141,18 @@ def ask_question(question: str, visualize: bool = False) -> Dict[str, Any]:
 
     try:
         logger.info(f"处理问题: {question}")
-        # 调用AI生成SQL
-        response = client.chat.completions.create(
-            model="glm-4-flash",
-            messages=[
-                {"role": "system", "content": SYSTEM_PROMPT},
-                {"role": "user", "content": question}
-            ],
-            temperature=0
-        )
-        raw = response.choices[0].message.content.strip()
-
-        # 提取SQL（增强正则匹配）
-        sql_match = re.search(r"```(?:sql)?\n*(.*?)\n*```", raw, re.DOTALL)
-        if sql_match:
-            sql = sql_match.group(1).strip()
-        else:
-            sql = raw.strip()
-
-        # 检查是否为有效 SQL（简单判断）
-        if not re.match(r'^\s*(SELECT|WITH|INSERT|UPDATE|DELETE)\s', sql, re.IGNORECASE):
-            result['error'] = "生成的内容不是有效的 SQL，请提出数据查询类问题。"
-            logger.warning(f"LLM 返回非 SQL: {sql[:100]}")
+        # 调用 LLM 生成 SQL
+        sql, error = llm_client.generate_sql(SYSTEM_PROMPT, question)
+        if error:
+            result['error'] = error
             return result
 
         # 安全过滤：禁止危险SQL
         if any(keyword in sql.upper() for keyword in DANGER_SQL_KEYWORDS):
-            raise ValueError("禁止执行修改/删除类SQL操作")
+            result['error'] = "禁止执行修改/删除类SQL操作"
+            logger.warning(f"危险SQL: {sql}")
+            return result
+
         result['sql'] = sql
         logger.info(f"生成的SQL: {sql}")
 
