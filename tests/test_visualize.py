@@ -1,3 +1,10 @@
+import sys
+import os
+
+# 获取项目根目录
+project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, project_root)
+
 from chatbi_core import ask_question
 
 # 测试问题列表
