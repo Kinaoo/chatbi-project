@@ -1,6 +1,6 @@
 # app.py
 import streamlit as st
-from chatbi_core import ask_question
+from chatbi_core import ask_question, execute_sql
 import pandas as pd
 
 # 页面配置
@@ -66,6 +66,30 @@ with st.sidebar:
     if st.button("清空对话历史", use_container_width=True):
         st.session_state.messages = []
         st.rerun()
+
+# 在侧边栏添加 SQL 执行器（使用表单，自动清空输入框）
+with st.sidebar:
+    st.markdown("---")
+    st.markdown("### 🛠️ SQL 执行器（高级）")
+    with st.form(key="sql_executor_form"):
+        sql_input = st.text_area("输入 SQL 语句", height=200)
+        submitted = st.form_submit_button("执行 SQL", use_container_width=True)
+        if submitted:
+            if sql_input:
+                with st.spinner("执行中..."):
+                    result = execute_sql(sql_input, visualize=True)
+                if result['error']:
+                    st.error(result['error'])
+                else:
+                    if result.get('warning'):
+                        st.warning(result['warning'])
+                    st.success(f"执行成功，返回 {len(result['data'])} 行")
+                    st.dataframe(result['data'], use_container_width=True)
+                    if result['chart_path']:
+                        st.image(result['chart_path'])
+                # 表单提交后，输入框会自动清空，无需手动操作 session_state
+            else:
+                st.warning("请输入 SQL")
 
 # --------------------- 示例问题按钮 ---------------------
 st.markdown("### 试试这些问题：")

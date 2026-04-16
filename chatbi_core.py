@@ -134,6 +134,51 @@ def ask_question(question: str, visualize: bool = False) -> Dict[str, Any]:
 
     return result
 
+def execute_sql(sql: str, visualize: bool = False) -> Dict[str, Any]:
+    result = {
+        'sql': sql,
+        'data': None,
+        'error': None,
+        'chart_path': None,
+        'warning': None
+    }
+
+    # 处理多条语句（分号分割）
+    statements = [s.strip() for s in sql.split(';') if s.strip()]
+    if len(statements) > 1:
+        result['warning'] = f"检测到 {len(statements)} 条 SQL 语句，仅执行第一条。"
+        sql_to_execute = statements[0]
+    else:
+        sql_to_execute = sql
+
+    try:
+        df, error = executor.execute(sql_to_execute)
+        if error:
+            result['error'] = classify_error(error)
+        else:
+            # ========== 处理重复列名 ==========
+            if df.columns.duplicated().any():
+                # 生成新列名：重复的列名后面加数字后缀
+                new_cols = []
+                col_count = {}
+                for col in df.columns:
+                    if col in col_count:
+                        col_count[col] += 1
+                        new_cols.append(f"{col}_{col_count[col]}")
+                    else:
+                        col_count[col] = 0
+                        new_cols.append(col)
+                df.columns = new_cols
+                logger.warning(f"检测到重复列名，已自动重命名: {df.columns.tolist()}")
+            # =================================
+            result['data'] = df
+            if visualize:
+                chart_path = viz.plot(df, "用户自定义SQL")
+                result['chart_path'] = chart_path
+    except Exception as e:
+        result['error'] = classify_error(str(e))
+    return result
+
 if __name__ == "__main__":
     test_q = "各个地区的总销售额是多少？"
     res = ask_question(test_q, visualize=True)
