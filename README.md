@@ -166,4 +166,4 @@ docker run -d -p 8501:8501 \
 
 ## 联系方式
 - 作者：kinao-python
-- GitHub：[https://github.com/kinao-python/chatbi-project](https://github.com/kinao-python/chatbi-project)
+- GitHub：[https://github.com/Kinaoo/chatbi-project](https://github.com/Kinaoo/chatbi-project)
